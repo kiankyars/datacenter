@@ -1,0 +1,8 @@
+{
+  "name": "inside-a-datacenter",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "node server.mjs", "check": "node --check dist/app.js && node --check dist/world.js && node --check dist/content.js" },
+  "dependencies": { "three": "0.180.0" }
+}

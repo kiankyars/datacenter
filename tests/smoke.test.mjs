@@ -208,7 +208,7 @@ test('a frame that starts 0px tall recovers without errors', async () => {
     }),
   );
   await page.goto(`${BASE}host.html`);
-  const frame = await (await page.waitForSelector('#f')).contentFrame();
+  const frame = await (await page.waitForSelector('#f', { state: 'attached' })).contentFrame();
   await frame.waitForSelector('#chapter-copy h1');
   await page.evaluate(() => {
     document.getElementById('f').style.height = '700px';

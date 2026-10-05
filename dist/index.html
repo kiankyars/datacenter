@@ -1,23 +1,114 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080808">
-<meta name="description" content="Journey through the physical world behind the cloud. Explore a living voxel datacenter, from electricity to computation.">
-<title>Inside a Datacenter</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
-</head>
-<body>
-<a class="skip-link" href="#story">Skip to learning content</a>
-<div id="world" role="group" aria-label="Three dimensional datacenter landscape. Scroll to travel; drag horizontally to orbit."><div class="world-fallback" hidden>The 3D landscape is unavailable. Use the chapters and equipment guide to explore all the learning content.</div><div id="hotspots"></div></div>
-<div class="vignette" aria-hidden="true"></div>
-<header class="identity"><button id="home" aria-label="Return to the beginning"><span class="logo">D<span>C</span><i></i><i></i><i></i></span><span class="identity-name">Inside a<br>Datacenter</span></button></header>
-<button id="menu-toggle" aria-expanded="false" aria-controls="chapters">Chapters <span>＋</span></button>
-<nav id="chapters" aria-label="Explore chapters"></nav>
-<div class="utility"><button id="reset-view" title="Reset camera">Reset view</button><button id="motion-button" aria-label="Pause ambient animation" aria-pressed="false">Motion on</button><button id="about-button">About</button></div>
-<div id="scroll-track" aria-hidden="true"></div>
-<main id="story" tabindex="-1" aria-label="Current chapter"><div id="chapter-copy"></div></main>
-<div class="tour-controls"><span id="chapter-count">01 / 06</span><button id="previous" aria-label="Previous chapter">↑</button><button id="next" aria-label="Next chapter">↓</button></div>
-<p class="world-note">AN ILLUSTRATIVE WORLD · NOT TO SCALE</p><div class="progress-line" aria-hidden="true"><i id="progress-fill"></i></div>
-<dialog id="equipment-dialog"><button class="close-dialog" aria-label="Close equipment detail">×</button><div id="equipment-content"></div></dialog>
-<dialog id="about-dialog"><button class="close-dialog" aria-label="Close about">×</button><p class="eyebrow">INSIDE A DATACENTER</p><h2>The cloud is a place.</h2><p>This interactive landscape introduces the systems behind digital services. Scroll to move through six chapters. Select equipment for a closer look, or use the equipment guide in each chapter.</p><p>Drag horizontally to orbit. Arrow keys and the chapter controls move between stops. Reduced-motion settings are respected; ambient motion can also be paused.</p><p>The facility is illustrative and not to scale. It combines air and liquid cooling to explain their roles. Real equipment arrangements and redundancy designs vary. This is not live operational data.</p><p>Inspired by the spatial, pixel-built world at <a href="https://y-n10.com" target="_blank" rel="noreferrer">Yamauchi No.10</a>. The geometry and learning content here are original.</p><div id="source-list"></div></dialog>
-<script type="module" src="/app.js"></script>
-</body></html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#080808" />
+    <meta
+      name="description"
+      content="Journey through the physical world behind the cloud. Explore a living voxel datacenter, from electricity to computation."
+    />
+    <title>Inside a Datacenter</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <!-- Fonts load without blocking the first paint; the system fallbacks show until then. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;600;700&display=swap"
+      media="print"
+      onload="this.media = 'all'"
+    />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="modulepreload" href="./app.js" />
+    <link rel="modulepreload" href="./content.js" />
+    <link rel="modulepreload" href="./world.js" />
+    <link rel="modulepreload" href="./vendor/three-0.180.0/three.module.min.js" />
+    <link rel="modulepreload" href="./vendor/three-0.180.0/three.core.min.js" />
+  </head>
+  <body>
+    <a class="skip-link" href="#story">Skip to the chapter text</a>
+    <div id="world">
+      <p id="world-loading" class="world-loading" role="status">Loading the 3D landscape…</p>
+      <div class="world-fallback" hidden>
+        The 3D landscape is unavailable here. The chapters and equipment guides hold all of the learning content.
+      </div>
+    </div>
+    <div class="vignette" aria-hidden="true"></div>
+    <header class="identity">
+      <button id="home" type="button">
+        <span class="logo" aria-hidden="true">D<span>C</span><i></i><i></i><i></i></span>
+        <span class="identity-name">Inside a <br />Datacenter</span>
+        <span class="visually-hidden">, back to the start</span>
+      </button>
+    </header>
+    <button id="menu-toggle" type="button" aria-expanded="false" aria-controls="chapters" data-needs-script hidden>
+      Chapters <span aria-hidden="true">+</span>
+    </button>
+    <nav id="chapters" aria-label="Chapters"></nav>
+    <div class="utility" data-needs-script hidden>
+      <div class="rotate" role="group" aria-label="Rotate the view">
+        <button id="rotate-left" type="button" aria-label="Rotate left" title="Rotate left">↺</button>
+        <button id="rotate-right" type="button" aria-label="Rotate right" title="Rotate right">↻</button>
+      </div>
+      <button id="reset-view" type="button">Reset view</button>
+      <button id="motion-button" type="button">Pause motion</button>
+      <button id="about-button" type="button">About</button>
+    </div>
+    <div id="scroll-track" aria-hidden="true"></div>
+    <main id="story" tabindex="-1" aria-label="Current chapter">
+      <div id="chapter-copy"></div>
+      <p id="flow-caption" class="flow-caption" aria-hidden="true"></p>
+    </main>
+    <div id="hotspots" class="hotspots" role="group" aria-label="Labels in the 3D world"></div>
+    <div id="world-tooltip" class="world-tooltip" aria-hidden="true" hidden></div>
+    <div class="tour-controls" data-needs-script hidden>
+      <span id="chapter-count">01 / 06</span>
+      <button id="previous" type="button" aria-label="Previous chapter" aria-disabled="true">↑</button>
+      <button id="next" type="button" aria-label="Next chapter">↓</button>
+    </div>
+    <p class="world-note">AN ILLUSTRATIVE WORLD · NOT TO SCALE</p>
+    <div class="progress-line" aria-hidden="true"><i id="progress-fill"></i></div>
+    <p id="announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></p>
+    <dialog id="equipment-dialog" aria-labelledby="equipment-title">
+      <button class="close-dialog" type="button" aria-label="Close equipment detail">×</button>
+      <div id="equipment-content"></div>
+    </dialog>
+    <dialog id="about-dialog" aria-labelledby="about-title">
+      <button class="close-dialog" type="button" aria-label="Close about">×</button>
+      <p class="eyebrow">INSIDE A DATACENTER</p>
+      <h2 id="about-title">The cloud is a place.</h2>
+      <p>
+        This interactive landscape introduces the systems behind digital services. Scroll to move through six chapters.
+        Select equipment in the world for a closer look, or open the equipment guide in any chapter.
+      </p>
+      <p>
+        Drag sideways or use the rotate buttons to turn the view. The arrow keys, Page Up and Page Down, keys 1–6 and
+        the chapter controls move between stops. Reduced-motion settings are respected, and ambient motion can be
+        paused.
+      </p>
+      <p>
+        The facility is illustrative and not to scale. It combines air and liquid cooling to explain their roles. Real
+        equipment arrangements and redundancy designs vary. This is not live operational data.
+      </p>
+      <p>
+        For a full course on AI data centers, see
+        <a href="https://kiankyars.github.io/gigawatt/">From Watts to Tokens</a>.
+      </p>
+      <p>
+        Inspired by the spatial, pixel-built world of the
+        <a href="https://y-n10.com" target="_blank" rel="noreferrer"
+          >Yamauchi No.10 Family Office<span class="visually-hidden"> (opens in a new tab)</span></a
+        >. The geometry and learning content here are original.
+      </p>
+      <div id="source-list"></div>
+    </dialog>
+    <noscript>
+      <p class="no-script">
+        Inside a Datacenter is an interactive guide and needs JavaScript. It covers the power, compute, cooling and
+        network systems of a datacenter, and the people who operate one.
+      </p>
+    </noscript>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

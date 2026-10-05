@@ -59,7 +59,7 @@ async function open(viewport = DESKTOP, { hash = '', setup } = {}) {
 
 const chapterIs = (page, n) =>
   page.waitForFunction(
-    (label) => document.querySelector('#chapter-count').textContent.startsWith(label),
+    (label) => document.querySelector('#stop-count').textContent.startsWith(label),
     String(n).padStart(2, '0'),
   );
 
@@ -141,7 +141,7 @@ test('the page does not scroll behind the open drawer', async () => {
   for (let i = 0; i < 6; i++) await page.mouse.wheel(0, 600);
   await page.waitForTimeout(400);
   assert.equal(await page.evaluate(() => scrollY), before);
-  assert.match(await page.textContent('#chapter-count'), /^02/);
+  assert.match(await page.textContent('#stop-count'), /^02/);
   await close();
 });
 
@@ -171,7 +171,7 @@ test('a shared address opens its chapter and equipment', async () => {
   const { page, errors, close } = await open(DESKTOP, { hash: '#power/ups' });
   await page.waitForSelector('#equipment-dialog[open]');
   assert.equal(await page.textContent('#equipment-title'), 'UPS & batteries');
-  assert.match(await page.textContent('#chapter-count'), /^02/);
+  assert.match(await page.textContent('#stop-count'), /^02/);
   assert.deepEqual(errors, []);
   await close();
 });
@@ -181,7 +181,7 @@ test('copy and navigation work when three.js cannot load', async () => {
     setup: (p) => p.route('**/three.core.min.js', (route) => route.abort()),
   });
   assert.equal(await page.getAttribute('body', 'data-world'), 'fallback');
-  assert.equal(await page.locator('#chapters button').count(), 6);
+  assert.equal(await page.locator('#chapter-nav button').count(), 6);
   assert.ok(await page.locator('.world-fallback').isVisible());
   await page.keyboard.press('4');
   await chapterIs(page, 4);
@@ -218,4 +218,41 @@ test('a frame that starts 0px tall recovers without errors', async () => {
   await page.waitForTimeout(300);
   assert.deepEqual(await frame.evaluate(() => window.__errors), []);
   await context.close();
+});
+
+test('content after the journey takes over the page past its end', async () => {
+  const { page, errors, close } = await open();
+  // Embed the journey between host content, as the course homepage does.
+  await page.evaluate(() => {
+    const before = document.createElement('section');
+    before.style.height = '600px';
+    document.querySelector('#scroll-track').before(before);
+    const after = document.createElement('section');
+    after.id = 'after';
+    after.style.height = '2000px';
+    document.querySelector('#scroll-track').after(after);
+    dispatchEvent(new Event('resize'));
+  });
+  await page.keyboard.press('6');
+  await chapterIs(page, 6);
+  await page.evaluate(() => document.getElementById('after').scrollIntoView());
+  await page.waitForFunction(() => document.body.classList.contains('past-journey'));
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('#story')).visibility), 'hidden');
+  assert.equal(await page.evaluate(() => location.hash), '');
+  const y = await page.evaluate(() => scrollY);
+  await page.keyboard.press('ArrowDown');
+  await page.waitForFunction((start) => scrollY > start, y);
+  assert.match(await page.textContent('#stop-count'), /^06/);
+  await page.keyboard.press('Home');
+  await page.waitForFunction(() => !document.body.classList.contains('past-journey'));
+  await page.evaluate(() => scrollTo(0, 650));
+  await page.waitForFunction(() => document.querySelector('#stop-count').textContent.startsWith('01'));
+  await page.keyboard.press('3');
+  await chapterIs(page, 3);
+  const trackTop = await page.evaluate(
+    () => document.querySelector('#scroll-track').getBoundingClientRect().top + scrollY,
+  );
+  assert.equal(trackTop, 600);
+  assert.deepEqual(errors, []);
+  await close();
 });

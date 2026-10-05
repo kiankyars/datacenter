@@ -14,7 +14,7 @@
 html {
   background: var(--page);
   scrollbar-width: thin;
-  scrollbar-color: #555 var(--page);
+  scrollbar-color: #777 var(--page);
   scroll-snap-type: y proximity;
 }
 html:has(dialog[open]) {
@@ -201,6 +201,7 @@ a {
 .skip-link:focus-visible {
   box-shadow: none;
   outline-color: #111;
+  outline-offset: -5px;
 }
 .identity {
   position: fixed;
@@ -253,7 +254,7 @@ a {
   margin-top: 13px;
   text-shadow: var(--halo);
 }
-#chapters {
+#chapter-nav {
   position: fixed;
   top: 50%;
   left: 0;
@@ -264,7 +265,7 @@ a {
   padding: 14px 44px 14px 35px;
   background: linear-gradient(90deg, #080808f5 78%, #08080000);
 }
-#chapters button {
+#chapter-nav button {
   position: relative;
   font-size: 14px;
   text-align: left;
@@ -274,17 +275,17 @@ a {
   transition: color 0.3s;
   text-shadow: var(--halo);
 }
-#chapters button span {
+#chapter-nav button span {
   display: inline-block;
   font: 11px var(--mono);
   width: 26px;
   color: #8c8c8c;
 }
-#chapters button[aria-current='step'],
-#chapters button[aria-current='step'] span {
+#chapter-nav button[aria-current='step'],
+#chapter-nav button[aria-current='step'] span {
   color: #eee;
 }
-#chapters button[aria-current='step']::before {
+#chapter-nav button[aria-current='step']::before {
   content: '';
   width: 5px;
   height: 5px;
@@ -323,6 +324,7 @@ a {
 }
 #menu-toggle {
   display: none;
+  text-shadow: var(--halo);
 }
 .tour-controls {
   position: fixed;
@@ -460,6 +462,7 @@ a {
   border-color: #ddd;
 }
 .flow-caption {
+  pointer-events: auto;
   font: 12px/1.65 var(--mono);
   color: #b8b8b8;
   margin: 14px 0 0;
@@ -509,7 +512,7 @@ dialog {
 dialog::backdrop {
   background: #0006;
 }
-body:has(#equipment-dialog[open]) :is(#story, .tour-controls, .world-note) {
+body:has(#equipment-dialog[open]) :is(#story, #chapter-nav, #menu-toggle, .tour-controls, .world-note) {
   visibility: hidden;
 }
 dialog .close-dialog {
@@ -608,7 +611,7 @@ dialog a {
   .utility {
     left: 50px;
   }
-  #chapters {
+  #chapter-nav {
     padding-left: 50px;
   }
 }
@@ -628,15 +631,15 @@ dialog a {
   .identity-name {
     font-size: 16px;
   }
-  #chapters {
+  #chapter-nav {
     padding-left: 25px;
     gap: 9px;
     top: 43%;
   }
-  #chapters button {
+  #chapter-nav button {
     font-size: 12px;
   }
-  #chapters button span {
+  #chapter-nav button span {
     font-size: 10px;
     width: 22px;
   }
@@ -694,7 +697,7 @@ dialog a {
   .tour-controls > span {
     font-size: 11px;
   }
-  #chapters {
+  #chapter-nav {
     display: none;
     top: 125px;
     left: 20px;
@@ -707,14 +710,11 @@ dialog a {
     gap: 14px;
     z-index: 8;
   }
-  #chapters.open {
+  #chapter-nav.open {
     display: grid;
   }
-  #chapters button {
+  #chapter-nav button {
     font-size: 14px;
-  }
-  #chapters button[aria-current='step']::before {
-    display: none;
   }
   #menu-toggle {
     display: block;
@@ -826,9 +826,21 @@ dialog a {
 }
 
 /* ── Short windows: collapse the chapter list and let the copy scroll ─────── */
-@media (max-height: 560px) {
+@media (max-height: 560px) and (orientation: landscape) {
   .world-note {
     display: none;
+  }
+  .identity {
+    top: 14px;
+    left: 18px;
+  }
+  .logo {
+    width: 58px;
+    height: 37px;
+    font-size: 27px;
+    border-width: 3px;
+    padding: 2px 6px;
+    letter-spacing: -6px;
   }
   .identity-name {
     position: absolute;
@@ -837,7 +849,7 @@ dialog a {
     overflow: hidden;
     clip-path: inset(50%);
   }
-  #chapters {
+  #chapter-nav {
     display: none;
     position: fixed;
     top: 60px;
@@ -851,17 +863,14 @@ dialog a {
     gap: 8px 18px;
     z-index: 8;
   }
-  #chapters.open {
+  #chapter-nav.open {
     display: grid;
-  }
-  #chapters button[aria-current='step']::before {
-    display: none;
   }
   #menu-toggle {
     display: block;
     position: fixed;
     top: 22px;
-    left: 100px;
+    left: 92px;
     right: auto;
     z-index: 7;
     font: 12px var(--mono);
@@ -872,6 +881,7 @@ dialog a {
     bottom: 44px;
     overflow: auto;
     overscroll-behavior: contain;
+    pointer-events: auto;
   }
   #story::before {
     display: none;
@@ -880,23 +890,19 @@ dialog a {
     font-size: 26px;
   }
 }
+/* Short stacked windows keep the copy at the bottom, scrolling if it would not fit. */
+@media (max-height: 560px) and (orientation: portrait),
+  (min-height: 501px) and (max-height: 560px) and (max-width: 700px) {
+  #story {
+    top: auto;
+    bottom: 76px;
+    max-height: calc(100% - 140px);
+    overflow: auto;
+    overscroll-behavior: contain;
+    pointer-events: auto;
+  }
+}
 @media (max-height: 500px) and (orientation: landscape) {
-  .identity {
-    top: 14px;
-    left: 18px;
-  }
-  .logo {
-    width: 58px;
-    height: 37px;
-    font-size: 27px;
-    border-width: 3px;
-    padding: 2px 6px;
-    letter-spacing: -6px;
-  }
-  #menu-toggle {
-    top: 22px;
-    left: 92px;
-  }
   .tour-controls {
     top: 14px;
     right: 18px;
@@ -991,16 +997,21 @@ dialog a {
     overflow: hidden;
     clip-path: inset(50%);
   }
+}
+@media (max-width: 370px) and (orientation: portrait) {
   #menu-toggle {
     top: 77px;
   }
 }
 
 /* ── Past the journey (when the page continues after the track) ──────────── */
+html:has(body.past-journey) {
+  scroll-snap-type: none;
+}
 :is(
   .identity,
   #menu-toggle,
-  #chapters,
+  #chapter-nav,
   .utility,
   #story,
   .tour-controls,
@@ -1014,7 +1025,7 @@ dialog a {
     visibility 0.25s;
 }
 body.past-journey
-  :is(.identity, #menu-toggle, #chapters, .utility, #story, .tour-controls, .world-note, .progress-line, .hotspots) {
+  :is(.identity, #menu-toggle, #chapter-nav, .utility, #story, .tour-controls, .world-note, .progress-line, .hotspots) {
   opacity: 0;
   visibility: hidden;
 }
@@ -1024,8 +1035,8 @@ body.past-journey
   :root {
     --muted: #c8c8c8;
   }
-  #chapters button,
-  #chapters button span,
+  #chapter-nav button,
+  #chapter-nav button span,
   .utility button,
   .world-note,
   #story p.lead {
@@ -1033,11 +1044,11 @@ body.past-journey
   }
 }
 @media (forced-colors: active) {
-  #chapters button[aria-current='step'] {
+  #chapter-nav button[aria-current='step'] {
     text-decoration: underline 2px;
     text-underline-offset: 4px;
   }
-  #chapters button[aria-current='step']::before,
+  #chapter-nav button[aria-current='step']::before,
   .progress-line i {
     forced-color-adjust: none;
     background: Highlight;
@@ -1048,4 +1059,28 @@ body.past-journey
     scroll-behavior: auto !important;
     transition: none !important;
   }
+}
+
+/* ── Links to further material (set per chapter in content.js) ───────────── */
+.chapter-links {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+}
+.chapter-links .eyebrow {
+  flex-basis: 100%;
+  margin: 0 0 2px;
+  font-size: 11px;
+  color: #a6a6a6;
+}
+.chapter-links a {
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: #777;
+  text-shadow:
+    0 0 2px #080808,
+    0 0 8px #080808;
 }

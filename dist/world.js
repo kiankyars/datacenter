@@ -24,6 +24,12 @@ const CHAPTER_ANCHORS = {
   network: [7.8, 3.2, 7.8],
   operations: [-6.2, 3, 7.6],
 };
+// Equipment with separated parts gets an explicit label anchor on its main part.
+const ITEM_ANCHORS = {
+  fiber: [10.8, 1.6, 8.5],
+  generator: [-10, 3.58, 3.6],
+  leaf: [4.4, 2.9, 4.4],
+};
 const SERVER_ORIGIN = new THREE.Vector3(38, 0, -4);
 const PART_ANCHORS = {
   cpu: [-3.2, 2, -1.2],
@@ -209,10 +215,17 @@ export function createWorld(container, options = {}) {
   if (chapterIds.length !== STOPS.length) throw new Error(`The world has ${STOPS.length} camera stops.`);
 
   const deviceRatio = () => Math.min(window.devicePixelRatio || 1, 2);
+  // The backing store is capped near 4.2 megapixels so large displays stay affordable.
+  const pixelRatio = (w, h) => Math.min(deviceRatio(), Math.sqrt(4.2e6 / Math.max(1, w * h)));
   let renderer;
   try {
-    // At high pixel ratios the extra resolution already hides aliasing, so MSAA is skipped.
-    renderer = new THREE.WebGLRenderer({ antialias: deviceRatio() < 1.5, alpha: false, powerPreference: 'low-power' });
+    // When the canvas renders at a high pixel ratio, the extra resolution already hides
+    // aliasing, so MSAA is skipped.
+    renderer = new THREE.WebGLRenderer({
+      antialias: pixelRatio(innerWidth, innerHeight) < 1.5,
+      alpha: false,
+      powerPreference: 'low-power',
+    });
   } catch {
     return null;
   }
@@ -747,6 +760,10 @@ export function createWorld(container, options = {}) {
   let width = 1;
   let height = 1;
   let safe = null;
+  let offX = 0;
+  let offY = 0;
+  let targetOffX = 0;
+  let targetOffY = 0;
   let flowId = null;
   let flowGroup = null;
   let flowPackets = [];
@@ -777,20 +794,28 @@ export function createWorld(container, options = {}) {
     }
     const bounds = boundsOf(id);
     if (!bounds) continue;
-    const anchor = bounds.getCenter(new THREE.Vector3());
-    anchor.y = bounds.max.y + 0.35;
+    let anchor;
+    if (ITEM_ANCHORS[id]) anchor = new THREE.Vector3(...ITEM_ANCHORS[id]);
+    else {
+      anchor = bounds.getCenter(new THREE.Vector3());
+      anchor.y = bounds.max.y + 0.35;
+    }
     addSpot(id, 'item', anchor, text);
   }
   function measureSpots() {
+    const hidden = spots.map((s) => s.el.hidden);
     for (const s of spots) {
-      const wasHidden = s.el.hidden;
       s.el.style.visibility = 'hidden';
       s.el.hidden = false;
+    }
+    for (const s of spots) {
       s.w = s.el.offsetWidth;
       s.h = s.el.offsetHeight;
-      s.el.hidden = wasHidden;
-      s.el.style.visibility = '';
     }
+    spots.forEach((s, i) => {
+      s.el.hidden = hidden[i];
+      s.el.style.visibility = '';
+    });
     needsRender = true;
   }
   measureSpots();
@@ -803,12 +828,19 @@ export function createWorld(container, options = {}) {
     const chapter = chapterIds[index];
     const settled = Math.abs(progress - index) < 0.2;
     const partFocus = serverParts.includes(focusId);
+    // With equipment in focus, labels follow its chapter rather than the scroll position.
+    const focusChapter = focusId && !partFocus ? itemChapter[focusId] : null;
     const placed = [];
-    for (const s of spots) {
+    // The selected label is placed first, so other labels give way to it.
+    const ordered = selected
+      ? [...spots.filter((s) => s.id === selected), ...spots.filter((s) => s.id !== selected)]
+      : spots;
+    for (const s of ordered) {
       let show;
       if (s.kind === 'part') show = partFocus;
       else if (partFocus || flowId) show = false;
-      else if (s.kind === 'chapter') show = progress < 0.35;
+      else if (s.kind === 'chapter') show = !focusChapter && progress < 0.35;
+      else if (focusChapter) show = itemChapter[s.id] === focusChapter;
       else show = settled && index > 0 && itemChapter[s.id] === chapter;
       let x = 0;
       let y = 0;
@@ -816,7 +848,7 @@ export function createWorld(container, options = {}) {
         _v.copy(s.position).project(camera);
         x = Math.round((_v.x * 0.5 + 0.5) * width);
         y = Math.round((-_v.y * 0.5 + 0.5) * height);
-        const box = [x - s.w / 2 - 4, y - s.h - 16, x + s.w / 2 + 4, y];
+        const box = [x - s.w / 2 - 4, y - s.h, x + s.w / 2 + 4, y + 16]; // label above, 16 px leader below
         show = _v.z > -1 && _v.z < 1 && box[0] >= r.l && box[2] <= r.r && box[1] >= r.t && box[3] <= r.b;
         // Labels that would overlap one already placed are skipped.
         if (show && placed.some((p) => box[0] < p[2] && box[2] > p[0] && box[1] < p[3] && box[3] > p[1])) show = false;
@@ -841,9 +873,15 @@ export function createWorld(container, options = {}) {
   }
 
   // ── Camera ──────────────────────────────────────────────────────────────────
-  function applyView() {
+  // The view offset centres the subject in the free screen area. It eases with the
+  // camera, except on a window resize, where it snaps.
+  function targetView() {
     const r = safe || { l: 0, r: width, t: 0, b: height };
-    camera.setViewOffset(width, height, width / 2 - (r.l + r.r) / 2, height / 2 - (r.t + r.b) / 2, width, height);
+    targetOffX = width / 2 - (r.l + r.r) / 2;
+    targetOffY = height / 2 - (r.t + r.b) / 2;
+  }
+  function applyView() {
+    camera.setViewOffset(width, height, offX, offY, width, height);
     camera.zoom = zoom;
     camera.updateProjectionMatrix();
   }
@@ -854,8 +892,7 @@ export function createWorld(container, options = {}) {
     if (!w || !h) return;
     width = w;
     height = h;
-    // Cap the backing store near 4.2 megapixels so large displays stay affordable.
-    renderer.setPixelRatio(Math.min(deviceRatio(), Math.sqrt(4.2e6 / (w * h))));
+    renderer.setPixelRatio(pixelRatio(w, h));
     renderer.setSize(w, h);
     const aspect = w / h;
     const v = aspect < 1 ? 23 / aspect : 22;
@@ -863,8 +900,12 @@ export function createWorld(container, options = {}) {
     camera.right = v * aspect;
     camera.top = v;
     camera.bottom = -v;
+    targetView();
+    offX = targetOffX;
+    offY = targetOffY;
     applyView();
     updatePose();
+    measureSpots();
   }
 
   function updatePose() {
@@ -878,19 +919,51 @@ export function createWorld(container, options = {}) {
     target.set(lerp(a.x, b.x, u), 0, lerp(a.z, b.z, u));
     targetAzimuth = lerp(a.angle, b.angle, u) + orbit;
     targetElevation = lerp(a.elevation, b.elevation, u);
-    targetZoom =
-      lerp(a.zoom, b.zoom, u) * Math.min(1, (r.b - r.t) / 220) * (r.side ? Math.min(1, (r.r - r.l) / 480) : 1);
+    // Chapter framings were tuned at 1024×768; scale their limits by the actual pixels per unit.
+    const ppu = width / (camera.right - camera.left);
+    const s = ppu / 17.45;
+    targetZoom = lerp(a.zoom, b.zoom, u) * Math.min(1, (r.r - r.l) / (480 * s), (r.b - r.t) / (220 * s));
     const bounds = focusId && boundsOf(focusId);
     if (bounds) {
       bounds.getCenter(target);
       target.y = 0;
       const part = serverParts.includes(focusId);
-      const fit = r.side ? Math.min(1, (r.r - r.l) / 720) : Math.min(1, (r.r - r.l) / 420, (r.b - r.t) / 260);
-      targetZoom = (part ? 2.1 : 2.5) * fit;
       targetAzimuth = 0.6 + orbit;
       targetElevation = 29;
+      // Fit the whole chassis for server parts, or the item itself, inside the free area.
+      const fit = part ? boundsOf('server') || bounds : bounds;
+      targetZoom = fitZoom(fit, part ? 2.1 : 2.5, r, ppu);
     }
+    // A camera move leaves any hover name stale.
+    hideTooltip();
+    canvas.style.cursor = 'grab';
     needsRender = true;
+  }
+
+  const _right = new THREE.Vector3();
+  const _up = new THREE.Vector3();
+  const _toward = new THREE.Vector3();
+  const _corner = new THREE.Vector3();
+  // The largest zoom at which `bounds`, seen from the target pose, fits in rect `r`.
+  function fitZoom(bounds, maxZoom, r, ppu) {
+    const az = targetAzimuth;
+    _right.set(Math.cos(az), 0, -Math.sin(az));
+    _toward.set(Math.sin(az) * 42, targetElevation, Math.cos(az) * 42).normalize();
+    _up.crossVectors(_toward, _right);
+    let ex = 0;
+    let ey = 0;
+    for (let i = 0; i < 8; i++) {
+      _corner
+        .set(
+          i & 1 ? bounds.max.x : bounds.min.x,
+          i & 2 ? bounds.max.y : bounds.min.y,
+          i & 4 ? bounds.max.z : bounds.min.z,
+        )
+        .sub(target);
+      ex = Math.max(ex, 2 * Math.abs(_corner.dot(_right)));
+      ey = Math.max(ey, 2 * Math.abs(_corner.dot(_up)));
+    }
+    return Math.min(maxZoom, (0.9 * (r.r - r.l)) / (ex * ppu || 1), (0.9 * (r.b - r.t)) / (ey * ppu || 1));
   }
 
   function isMoving() {
@@ -898,7 +971,9 @@ export function createWorld(container, options = {}) {
       Math.abs(targetAzimuth - azimuth) > 1e-4 ||
       Math.abs(targetZoom - zoom) > 1e-4 ||
       target.distanceToSquared(lookAt) > 1e-5 ||
-      Math.abs(targetElevation - elevation) > 1e-4
+      Math.abs(targetElevation - elevation) > 1e-4 ||
+      Math.abs(targetOffX - offX) > 0.5 ||
+      Math.abs(targetOffY - offY) > 0.5
     );
   }
 
@@ -1076,7 +1151,10 @@ export function createWorld(container, options = {}) {
     }
     const moving = isMoving();
     const ambient = !paused && !covered;
-    if (!needsRender && !moving && (!ambient || now - lastDraw < AMBIENT_FRAME_MS - 1)) return;
+    if (!needsRender && !moving && (!ambient || now - lastDraw < AMBIENT_FRAME_MS - 1)) {
+      if (!ambient) last = now; // so the next camera move eases from a fresh clock
+      return;
+    }
     const elapsed = Math.min((now - last) / 1000, 0.25);
     last = now;
     lastDraw = now;
@@ -1087,18 +1165,19 @@ export function createWorld(container, options = {}) {
     zoom += (targetZoom - zoom) * k;
     elevation += (targetElevation - elevation) * k;
     lookAt.lerp(target, k);
+    offX += (targetOffX - offX) * k;
+    offY += (targetOffY - offY) * k;
     if (!isMoving()) {
       azimuth = targetAzimuth;
       zoom = targetZoom;
       elevation = targetElevation;
       lookAt.copy(target);
+      offX = targetOffX;
+      offY = targetOffY;
     }
     camera.position.set(lookAt.x + Math.sin(azimuth) * 42, elevation, lookAt.z + Math.cos(azimuth) * 42);
     camera.lookAt(lookAt);
-    if (camera.zoom !== zoom) {
-      camera.zoom = zoom;
-      camera.updateProjectionMatrix();
-    }
+    if (camera.zoom !== zoom || camera.view?.offsetX !== offX || camera.view?.offsetY !== offY) applyView();
     if (!paused) {
       flowTime += Math.min(elapsed, 0.05);
       fanGroups.forEach((f) => (f.rotation.y = flowTime * 1.8));
@@ -1106,7 +1185,7 @@ export function createWorld(container, options = {}) {
       placePackets();
     }
     camera.updateMatrixWorld();
-    if (covered) return;
+    if (covered && readyFired) return;
     updateHotspots();
     renderer.render(scene, camera);
     if (!readyFired) {
@@ -1169,7 +1248,7 @@ export function createWorld(container, options = {}) {
     },
     setSafeRect(rect) {
       safe = rect;
-      applyView();
+      targetView();
       updatePose();
     },
     cover(value) {

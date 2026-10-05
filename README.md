@@ -19,7 +19,7 @@ The site in `dist/` is plain static files with relative URLs, so it can be serve
 
 ## Structure
 
-- `dist/content.js` holds all chapter and equipment copy, and is the only place names, labels and counts are defined.
+- `dist/content.js` holds all chapter and equipment names and copy. The number of chapters is also fixed by the camera stops and models in `dist/world.js` (`STOPS`, `CHAPTER_ANCHORS`) and mentioned in the About text in `dist/index.html`, so change those together.
 - `dist/app.js` runs the chapters, drawers, keyboard controls, addresses and the optional WebMCP `explore_datacenter` tool. The copy and controls work before, and without, the 3D world.
 - `dist/world.js` builds the voxel landscape and camera. It loads lazily and falls back to a message when WebGL is unavailable.
 - `dist/vendor/three-<version>/` is the vendored Three.js build.
@@ -45,7 +45,7 @@ npm install -D three@<version>
 npm run vendor        # copies the build into dist/vendor/three-<version>/
 ```
 
-Then update the `vendor/three-<version>/` paths in `dist/world.js` and `dist/index.html`; `npm run check` fails until they match.
+`npm run vendor` also removes the old copy. Then update the `vendor/three-<version>/` paths in `dist/world.js` and `dist/index.html`; `npm run check` fails until every reference matches.
 
 ## License
 

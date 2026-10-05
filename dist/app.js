@@ -10,11 +10,11 @@ const reducedQuery = matchMedia('(prefers-reduced-motion: reduce)');
 
 const els = {
   track: $('#scroll-track'),
-  nav: $('#chapters'),
+  nav: $('#chapter-nav'),
   story: $('#story'),
   copy: $('#chapter-copy'),
   caption: $('#flow-caption'),
-  count: $('#chapter-count'),
+  count: $('#stop-count'),
   prev: $('#previous'),
   next: $('#next'),
   progress: $('#progress-fill'),
@@ -115,7 +115,16 @@ function onScroll() {
   if (past !== document.body.classList.contains('past-journey')) {
     document.body.classList.toggle('past-journey', past);
     setCover('past', past);
-    if (past) closeMenu();
+    if (past) {
+      closeMenu();
+      // Past the journey, the address and title belong to the page again, so a reload
+      // keeps the reader where they are rather than jumping back to the last chapter.
+      if (parseHash()) {
+        history.replaceState(history.state, '', location.pathname + location.search);
+        history.scrollRestoration = 'auto';
+      }
+      document.title = baseTitle;
+    } else updateHash();
   }
   if (els.detail.open) return; // the chapter holds still while the drawer is open
   enterChapter(Math.round(progress));
@@ -129,7 +138,13 @@ addEventListener(
 );
 addEventListener('scrollend', clearPending);
 addEventListener('wheel', clearPending, { passive: true });
-addEventListener('touchstart', clearPending, { passive: true });
+addEventListener(
+  'touchstart',
+  (e) => {
+    if (!e.target.closest?.('button, a, [role="button"]')) clearPending();
+  },
+  { passive: true },
+);
 
 // The track scales with the viewport, so a real resize keeps the reader's progress
 // instead of letting the old scroll offset land in another chapter.
@@ -175,13 +190,18 @@ function copyFor(c, i) {
       `<button id="trace" type="button" aria-pressed="false" data-flow="${c.flow.id}">Follow the ${esc(c.flow.noun)}</button>`,
     );
   }
-  for (const link of c.links || [])
-    actions.push(`<a class="chapter-link-out" href="${esc(link.href)}">${esc(link.label)} ${arrow}</a>`);
-  return `<p class="eyebrow">${esc(eyebrow)}</p>
-    <h1 tabindex="-1">${c.title.map(esc).join('<br>')}</h1>
+  // Optional links to further material, such as a course's chapters, set in content.js.
+  const links = c.links?.length
+    ? `<div class="chapter-links"><p class="eyebrow">${esc((c.linksTitle || 'Go deeper').toUpperCase())}</p>${c.links
+        .map((link) => `<a href="${esc(link.href)}">${esc(link.label)} ${arrow}</a>`)
+        .join('')}</div>`
+    : '';
+  return `<p class="eyebrow">${esc(c.eyebrow || eyebrow)}</p>
+    <h1 id="chapter-title" tabindex="-1">${c.title.map(esc).join('<br>')}</h1>
     <p class="lead">${esc(c.lead)}</p>
-    ${i === 0 ? '<button class="enter-button" id="enter" type="button">Explore the datacenter <span aria-hidden="true">↓</span></button>' : ''}
+    ${c.enter && i < LAST ? `<button class="enter-button" id="enter" type="button">${esc(c.enter)} <span aria-hidden="true">↓</span></button>` : ''}
     <div class="chapter-actions">${actions.join('')}</div>
+    ${links}
     ${i === 0 ? '<p class="page-scroll-hint">SCROLL TO TRAVEL THROUGH THE WORLD</p>' : ''}`;
 }
 
@@ -209,7 +229,7 @@ function render() {
 els.copy.addEventListener('click', (e) => {
   const button = e.target.closest('button');
   if (!button) return;
-  if (button.id === 'enter') go(1);
+  if (button.id === 'enter') go(current + 1);
   else if (button.id === 'open-server') select('server');
   else if (button.id === 'open-guide') openGuide(current);
   else if (button.id === 'trace') setFlow(activeFlow === button.dataset.flow ? null : button.dataset.flow);
@@ -249,6 +269,7 @@ function announceChapter() {
 // The drawer is non-modal, so the 3D view beside or above it stays live: parts can be
 // picked, labels clicked and the model orbited while it is open.
 function openDrawer() {
+  closeMenu();
   if (!els.detail.open) {
     opener = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
     els.detail.show();
@@ -260,7 +281,12 @@ function openDrawer() {
 }
 
 function closeDetail() {
-  if (els.detail.open) els.detail.close();
+  if (!els.detail.open) return;
+  els.detail.close();
+  currentEquipment = null;
+  world.clearFocus();
+  updateSafeRect();
+  updateHash();
 }
 
 els.detail.addEventListener('close', () => {
@@ -300,7 +326,7 @@ function openGuide(i = current) {
 }
 
 function select(id) {
-  if (!equipment[id]) {
+  if (!Object.hasOwn(equipment, id)) {
     // Chapter-level pads, chapter labels and overview list items.
     const i = chapters.findIndex((c) => c.id === id);
     if (i < 0) return;
@@ -369,7 +395,8 @@ els.about.addEventListener('click', (e) => {
 });
 els.about.querySelector('.close-dialog').addEventListener('click', () => els.about.close());
 els.about.addEventListener('close', () => setCover('about', false));
-$('#about-button').addEventListener('click', () => {
+$('#about-button')?.addEventListener('click', () => {
+  closeMenu();
   closeDetail();
   els.about.showModal();
   setCover('about', els.about.getBoundingClientRect().width >= innerWidth - 1);
@@ -403,10 +430,11 @@ els.prev.addEventListener('click', () => {
 els.next.addEventListener('click', () => {
   if (els.next.getAttribute('aria-disabled') !== 'true') go(base() + 1);
 });
-$('#home').addEventListener('click', () => go(0));
-$('#reset-view').addEventListener('click', () => world.reset());
-$('#rotate-left').addEventListener('click', () => world.orbitBy(-0.35));
-$('#rotate-right').addEventListener('click', () => world.orbitBy(0.35));
+// A host page may leave out the home button or the camera controls.
+$('#home')?.addEventListener('click', () => go(0));
+$('#reset-camera')?.addEventListener('click', () => world.reset());
+$('#rotate-left')?.addEventListener('click', () => world.orbitBy(-0.35));
+$('#rotate-right')?.addEventListener('click', () => world.orbitBy(0.35));
 
 function updateMotion() {
   els.motion.textContent = paused ? 'Play motion' : 'Pause motion';
@@ -427,6 +455,7 @@ reducedQuery.addEventListener('change', (e) => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
+    if (els.about.open) return; // the modal handles its own Escape
     if (els.nav.classList.contains('open')) {
       closeMenu();
       els.menuToggle.focus({ preventScroll: true });
@@ -439,7 +468,10 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
   if (els.about.open || els.detail.open || pastJourney()) return;
-  const interactive = e.target.closest?.('button, a, input, select, textarea, [contenteditable]');
+  const editable =
+    'input, select, textarea, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="listbox"], [role="slider"]';
+  if (e.target.closest?.(editable)) return;
+  const interactive = e.target.closest?.('button, a');
   let to = null;
   if (/^[1-9]$/.test(e.key) && Number(e.key) <= chapters.length) to = Number(e.key) - 1;
   else if (['ArrowDown', 'ArrowRight', 'PageDown'].includes(e.key) || (e.key === ' ' && !e.shiftKey && !interactive))
@@ -497,20 +529,27 @@ document.fonts?.ready.then(updateSafeRect);
 // The address bar mirrors the chapter and open equipment (#power, #power/ups), so a
 // view can be shared. Hashes that belong to the host page are left alone.
 function parseHash(hash = location.hash) {
-  const [chapterId, equipmentId] = decodeURIComponent(hash.slice(1)).split('/');
+  let raw;
+  try {
+    raw = decodeURIComponent(hash.slice(1));
+  } catch {
+    return null;
+  }
+  const [chapterId, equipmentId] = raw.split('/');
   const i = chapters.findIndex((c) => c.id === chapterId);
-  return i < 0 ? null : { i, equipmentId: equipment[equipmentId] ? equipmentId : null };
+  return i < 0 ? null : { i, equipmentId: Object.hasOwn(equipment, equipmentId) ? equipmentId : null };
 }
 function updateHash() {
-  if (location.hash && !parseHash()) return;
+  if (document.body.classList.contains('past-journey')) return;
   const c = chapters[current];
+  document.title = current ? `${c.name} · ${baseTitle}` : baseTitle;
+  if (location.hash && !parseHash()) return;
   const hash = currentEquipment
     ? `#${equipment[currentEquipment].chapter}/${currentEquipment}`
     : current
       ? `#${c.id}`
       : '';
   if (location.hash !== hash) history.replaceState(history.state, '', hash || location.pathname + location.search);
-  document.title = current ? `${c.name} · ${baseTitle}` : baseTitle;
 }
 function applyHash() {
   const target = parseHash();
@@ -523,6 +562,10 @@ function applyHash() {
   return true;
 }
 addEventListener('hashchange', applyHash);
+document.querySelector('.skip-link[href="#story"]')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  els.story.focus();
+});
 
 // ── WebMCP ────────────────────────────────────────────────────────────────────
 // The tool goes through the same functions as the visible controls.
@@ -594,10 +637,7 @@ function loadWorld() {
   const options = {
     onSelect: select,
     onEmptyClick: () => closeDetail(),
-    onReady: () => {
-      els.loading?.remove();
-      document.body.dataset.world = 'ready';
-    },
+    onReady: () => worldState('ready'),
     onHotspotHidden: () => els.story.focus({ preventScroll: true }),
     hotspotLayer: els.hotspots,
     tooltip: els.tooltip,
@@ -629,10 +669,16 @@ function loadWorld() {
     })
     .catch((error) => {
       console.error(error);
-      els.loading?.remove();
       els.fallback.hidden = false;
-      document.body.dataset.world = 'fallback';
+      worldState('fallback');
     });
+}
+
+// Host pages can listen for 'datacenter:world' to react when the 3D view is ready or unavailable.
+function worldState(state) {
+  els.loading?.remove();
+  document.body.dataset.world = state;
+  document.dispatchEvent(new CustomEvent('datacenter:world', { detail: state }));
 }
 
 // ── Start ─────────────────────────────────────────────────────────────────────

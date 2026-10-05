@@ -20,6 +20,13 @@
       onload="this.media = 'all'"
     />
     <link rel="stylesheet" href="./style.css" />
+    <noscript
+      ><style>
+        .world-loading {
+          display: none;
+        }
+      </style></noscript
+    >
     <link rel="modulepreload" href="./app.js" />
     <link rel="modulepreload" href="./content.js" />
     <link rel="modulepreload" href="./world.js" />
@@ -42,16 +49,16 @@
         <span class="visually-hidden">, back to the start</span>
       </button>
     </header>
-    <button id="menu-toggle" type="button" aria-expanded="false" aria-controls="chapters" data-needs-script hidden>
+    <button id="menu-toggle" type="button" aria-expanded="false" aria-controls="chapter-nav" data-needs-script hidden>
       Chapters <span aria-hidden="true">+</span>
     </button>
-    <nav id="chapters" aria-label="Chapters"></nav>
+    <nav id="chapter-nav" aria-label="Chapters"></nav>
     <div class="utility" data-needs-script hidden>
       <div class="rotate" role="group" aria-label="Rotate the view">
         <button id="rotate-left" type="button" aria-label="Rotate left" title="Rotate left">↺</button>
         <button id="rotate-right" type="button" aria-label="Rotate right" title="Rotate right">↻</button>
       </div>
-      <button id="reset-view" type="button">Reset view</button>
+      <button id="reset-camera" type="button">Reset view</button>
       <button id="motion-button" type="button">Pause motion</button>
       <button id="about-button" type="button">About</button>
     </div>
@@ -63,7 +70,7 @@
     <div id="hotspots" class="hotspots" role="group" aria-label="Labels in the 3D world"></div>
     <div id="world-tooltip" class="world-tooltip" aria-hidden="true" hidden></div>
     <div class="tour-controls" data-needs-script hidden>
-      <span id="chapter-count">01 / 06</span>
+      <span id="stop-count">01 / 06</span>
       <button id="previous" type="button" aria-label="Previous chapter" aria-disabled="true">↑</button>
       <button id="next" type="button" aria-label="Next chapter">↓</button>
     </div>

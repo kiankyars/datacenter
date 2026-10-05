@@ -5,10 +5,14 @@ const doe = 'https://www.energy.gov/sites/default/files/2024-07/best-practice-gu
 const ibm = 'https://www.ibm.com/think/topics/data-centers';
 const ibmCpu = 'https://www.ibm.com/think/topics/central-processing-unit';
 const ibmGpu = 'https://www.ibm.com/think/topics/gpu';
+const rack19 = 'https://en.wikipedia.org/wiki/19-inch_rack';
+const sprinklers = 'https://en.wikipedia.org/wiki/Fire_sprinkler_system';
 const cisco =
   'https://www.cisco.com/c/en/us/products/collateral/switches/nexus-9000-series-switches/white-paper-c11-743245.html';
 
 // `title` lines are joined with line breaks. `insight` is the heading shown above `fact`.
+// Optional: `eyebrow` replaces the numbered label, `enter` adds a button to the next chapter,
+// and `links` ([{ label, href }], headed by `linksTitle`) point to further material.
 export const chapters = [
   {
     id: 'overview',
@@ -16,12 +20,13 @@ export const chapters = [
     color: '#f7ce46',
     title: ['The cloud is a place.'],
     lead: 'A journey through the machines, energy, and people behind every click.',
+    enter: 'Explore the datacenter',
     guideTitle: 'Five systems, one building',
     guideLead:
       'A datacenter brings computers together and keeps them powered, cool, connected, and looked after. Each system has its own chapter.',
     items: ['power', 'compute', 'cooling', 'network', 'operations'],
     insight: 'Follow the connections',
-    fact: 'Electricity enters. Data moves. Heat leaves. The building works only when these systems work together, and a large facility can draw tens of megawatts doing it.',
+    fact: 'Electricity enters. Data moves. Heat leaves. The building works only when these systems work together, and a large facility can draw tens to hundreds of megawatts doing it.',
   },
   {
     id: 'power',
@@ -46,8 +51,8 @@ export const chapters = [
     guideTitle: 'Compute equipment',
     guideLead: 'Racks are the frames; servers do the work. Open one to see how its parts fit together.',
     items: ['rack', 'server', 'cpu', 'gpu', 'memory', 'storage'],
-    insight: 'A rack is a frame',
-    fact: 'Rack-mounted equipment is 19 inches (48 cm) wide and stacks in units of 1.75 in (1U); a common rack holds 42U. Conventional racks often draw 5–15 kW. Dense AI racks now exceed 100 kW, which pushes cooling toward liquid.',
+    insight: 'Busy is efficient',
+    fact: 'In enterprise settings, servers average only about 20–40% utilization. Running fewer, busier servers is one of the most effective ways to save energy (DOE, 2024).',
   },
   {
     id: 'cooling',
@@ -83,7 +88,7 @@ export const chapters = [
     color: '#b59cde',
     title: ['It doesn’t run', 'itself.'],
     lead: 'People monitor conditions, maintain the machines, control access, and respond when something goes wrong.',
-    guideTitle: 'Operations equipment',
+    guideTitle: 'People and safeguards',
     guideLead:
       'Operators keep watch from a control room, staff the entrances, and plan maintenance so the facility never has to stop.',
     items: ['monitoring', 'security', 'fire'],
@@ -164,18 +169,18 @@ export const equipment = {
     path: 'UPS → busway → rack PDU → server power supply',
     insight:
       'This is the last hop before the server. Many servers have two power supplies, one on each of two separate paths, so either path can fail or be serviced without the server stopping.',
-    source: doe,
+    source: ibm,
   },
   psu: {
     chapter: 'power',
     name: 'Server power supply',
     label: 'PSU',
     description:
-      'Converts alternating current from the rack power strip into the low-voltage direct current, mostly 12 V, that the server’s boards use.',
+      'Converts alternating current from the rack power strip into the low-voltage direct current that the server’s boards use.',
     path: 'Rack PDU → power supply → motherboard',
     insight:
-      'Servers often have two power supplies, one on each power path, so either path can fail without the server stopping.',
-    source: ibm,
+      'Each conversion loses some energy as heat, so efficient power supplies cut both the electricity bill and the cooling load.',
+    source: doe,
   },
   rack: {
     chapter: 'compute',
@@ -185,8 +190,8 @@ export const equipment = {
       'A standard frame whose rails hold equipment 19 inches (48 cm) wide. Servers, switches, and power strips stack in rack units (1U = 1.75 in); a common rack holds 42U.',
     path: 'Data hall → row → rack → server',
     insight:
-      'Racks are budgeted in kilowatts. Conventional racks often draw 5–15 kW; dense AI racks now exceed 100 kW, which pushes cooling toward liquid.',
-    source: doe,
+      'Racks are budgeted in kilowatts. Dense AI racks now exceed 100 kW each (DOE, 2024), which pushes cooling toward liquid.',
+    source: rack19,
   },
   server: {
     chapter: 'compute',
@@ -363,10 +368,10 @@ export const equipment = {
     name: 'Fire detection & suppression',
     label: 'FIRE PANEL',
     description:
-      'Very early smoke detectors sample air through pipes to catch the first traces of smoke from overheating parts. Suppression may be sprinklers, often pre-action systems whose pipes stay dry until an alarm, or a clean-agent gas that won’t damage electronics.',
+      'Detectors raise the alarm early. Sprinklers here are often pre-action systems: their pipes stay dry until a detector trips, so a damaged pipe cannot flood the equipment. Some rooms use a clean-agent gas instead of water.',
     path: 'Detection → alarm → planned response',
     insight: 'Regular inspection and trained response are part of protection, alongside the equipment itself.',
-    source: ibm,
+    source: sprinklers,
   },
 };
 
@@ -379,4 +384,6 @@ export const sources = [
   { title: 'IBM · What is a central processing unit (CPU)?', url: ibmCpu },
   { title: 'IBM · What is a GPU?', url: ibmGpu },
   { title: 'Cisco · Massively Scalable Data Center Network Fabric Design (white paper, 2024)', url: cisco },
+  { title: 'Wikipedia · 19-inch rack', url: rack19 },
+  { title: 'Wikipedia · Fire sprinkler system', url: sprinklers },
 ];

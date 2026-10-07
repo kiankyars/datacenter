@@ -20,7 +20,7 @@ const STOPS = [
 // Label anchors for equipment whose parts are spread out, or that is labelled on one
 // example (one rack, one server, one aisle). Labels hang above their anchor.
 const ITEM_ANCHORS = {
-  utility: [-20, 8.7, -1],
+  utility: [-20, 0.9, -10],
   generator: [-10, 3.58, 3.6],
   ats: [-8.1, 2.25, -1.8],
   pdu: [-4, 4.05, -3.7],
@@ -30,7 +30,7 @@ const ITEM_ANCHORS = {
   'rack-pdu': [0.82, 2.95, 4.4],
   'cold-aisle': [-2.6, 0.75, 5.05],
   'hot-aisle': [5.7, 0.75, 1.78],
-  'facility-loop': [2.4, 0.95, -7.05],
+  'facility-loop': [6, 0.95, -7.05],
   fiber: [10.8, 1.6, 8.5],
   'cable-tray': [6.1, 4.35, 3.25],
   technician: [-3.7, 2.1, 9],

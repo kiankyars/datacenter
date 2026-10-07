@@ -34,7 +34,7 @@ export const chapters = [
     guideLead:
       'Follow the chain from the utility feed to the server. Each stage changes, protects, or backs up the supply.',
     items: ['utility', 'transformer', 'switchgear', 'ats', 'ups', 'generator', 'pdu', 'rack-pdu', 'psu'],
-    labels: ['utility', 'transformer', 'switchgear', 'ats', 'ups', 'generator', 'pdu'],
+    labels: ['transformer', 'switchgear', 'ups', 'generator', 'pdu', 'ats', 'utility'],
     insight: 'Two time scales',
     fact: 'A UPS can carry the load for seconds to minutes. A standby generator takes several seconds to start and pick up the load, then can run for hours on stored fuel.',
     flow: { id: 'power', noun: 'power' },

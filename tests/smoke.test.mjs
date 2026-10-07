@@ -145,13 +145,18 @@ test('the page does not scroll behind the open drawer', async () => {
   await close();
 });
 
-test('chapter labels in the overview open their chapter', async () => {
+test('the overview has no labels, and Compute labels its hall and opens a server', async () => {
   const { page, close } = await open();
-  const label = page.locator('#hotspots .hotspot:not([hidden])').first();
-  await label.waitFor();
-  const number = Number((await label.textContent()).slice(0, 2));
-  await label.click();
-  await chapterIs(page, number);
+  await page.waitForFunction(() => window.datacenter?.isSettled());
+  assert.equal(await page.locator('#hotspots .hotspot:not([hidden])').count(), 0);
+  await page.keyboard.press('3');
+  await chapterIs(page, 3);
+  await page.waitForFunction(() => document.querySelectorAll('#hotspots .hotspot:not([hidden])').length >= 4);
+  const labels = await page.locator('#hotspots .hotspot:not([hidden])').allTextContents();
+  assert.ok(labels.includes('SERVERS'), labels.join(', '));
+  await page.locator('#hotspots .hotspot:not([hidden])', { hasText: 'SERVERS' }).click();
+  await page.waitForSelector('#equipment-dialog[open]');
+  assert.equal(await page.textContent('#equipment-title'), 'Inside a server');
   await close();
 });
 
